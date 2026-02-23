@@ -17,28 +17,65 @@ if (selectedElements.size() < 2) {
     exit();
 }
 
+// 辅助函数：计算元素的绝对坐标
+function getAbsoluteBounds(element) {
+    var bounds = element.bounds;
+    var absX = bounds.x || 0;
+    var absY = bounds.y || 0;
+
+    var currentColl = $(element).parent();
+    while (currentColl && currentColl.size() > 0) {
+        var p = currentColl.first();
+        if (!p || p.type === "archimate-diagram-model" || p.type === "sketch-model") {
+            break;
+        }
+        if (p.bounds) {
+            absX += (p.bounds.x || 0);
+            absY += (p.bounds.y || 0);
+        }
+        currentColl = $(p).parent();
+    }
+    return { x: absX, y: absY };
+}
+
 // 遍历获取最后一个选中的元素作为基准
 var targetElement = null;
 selectedElements.each(function (e) {
     targetElement = e;
 });
-var targetRightX = targetElement.bounds.x + targetElement.bounds.width;
+var targetAbsBounds = getAbsoluteBounds(targetElement);
+var targetRight = targetAbsBounds.x + targetElement.bounds.width;
 
-console.log("--- 开始右对齐操作 ---");
-console.log("基准元素: [" + (targetElement.name || "未命名") + "], 目标右边缘X坐标: " + targetRightX);
+console.log("--- 开始智能右对齐操作 ---");
+console.log("基准元素: [" + (targetElement.name || "未命名") + "]");
+console.log("  -> 相对坐标: {x:" + targetElement.bounds.x + "}");
+console.log("  -> 绝对右边缘坐标: " + targetRight);
 
 // 遍历所有选中的元素，并更新它们的 X 坐标
 selectedElements.each(function (element) {
     if (element.id !== targetElement.id) {
-        var currentBounds = element.bounds;
+        var currentRelBounds = element.bounds;
+        var currentAbsBounds = getAbsoluteBounds(element);
+
+        console.log("待对齐元素: [" + (element.name || "未命名") + "]");
+
+        // 目标是让 element_abs_x + width = targetRight
+        // element_abs_x = parent_abs_x + new_rel_x
+        // => parent_abs_x + new_rel_x + width = targetRight
+        // => new_rel_x = targetRight - width - parent_abs_x
+
+        var parentAbsX = currentAbsBounds.x - currentRelBounds.x;
+        var newRelX = targetRight - currentRelBounds.width - parentAbsX;
+
         element.bounds = {
-            x: targetRightX - currentBounds.width,
-            y: currentBounds.y,
-            width: currentBounds.width,
-            height: currentBounds.height
+            x: newRelX,
+            y: currentRelBounds.y,
+            width: currentRelBounds.width,
+            height: currentRelBounds.height
         };
-        console.log("  -> 已对齐元素: [" + (element.name || "未命名") + "]");
+        console.log("  -> 新绝对右边缘应为: " + targetRight + ", 设置的新相对X坐标: " + newRelX);
     }
 });
 
-console.log("--- 右对齐操作完成 ---");
+console.log("--- 智能右对齐操作完成 ---");
+
