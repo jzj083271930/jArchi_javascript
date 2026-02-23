@@ -24,21 +24,61 @@ selectedElements.each(function (e) {
 });
 var targetY = targetElement.bounds.y;
 
-console.log("--- 开始顶部对齐操作 ---");
-console.log("基准元素: [" + (targetElement.name || "未命名") + "], 目标Y坐标: " + targetY);
+// 辅助函数：计算元素的绝对坐标
+function getAbsoluteBounds(element) {
+    var bounds = element.bounds;
+    var absX = bounds.x || 0;
+    var absY = bounds.y || 0;
+
+    var currentColl = $(element).parent();
+    while (currentColl && currentColl.size() > 0) {
+        var p = currentColl.first();
+        // 如果到达画布模型，则停止累加
+        if (!p || p.type === "archimate-diagram-model" || p.type === "sketch-model") {
+            break;
+        }
+        if (p.bounds) {
+            absX += (p.bounds.x || 0);
+            absY += (p.bounds.y || 0);
+        }
+        currentColl = $(p).parent();
+    }
+
+    return { x: absX, y: absY };
+}
+
+console.log("--- 开始智能顶部对齐操作 ---");
+var targetAbsBounds = getAbsoluteBounds(targetElement);
+console.log("基准元素: [" + (targetElement.name || "未命名") + "]");
+console.log("  -> 相对坐标: {x:" + targetElement.bounds.x + ", y:" + targetElement.bounds.y + "}");
+console.log("  -> 绝对坐标: {x:" + targetAbsBounds.x + ", y:" + targetAbsBounds.y + "}");
 
 // 遍历所有选中的元素，并更新它们的 Y 坐标
 selectedElements.each(function (element) {
     if (element.id !== targetElement.id) {
-        var currentBounds = element.bounds;
+        var currentRelBounds = element.bounds;
+        var currentAbsBounds = getAbsoluteBounds(element);
+
+        console.log("待对齐元素: [" + (element.name || "未命名") + "]");
+        console.log("  -> 原相对坐标: {x:" + currentRelBounds.x + ", y:" + currentRelBounds.y + "}");
+        console.log("  -> 原绝对坐标: {x:" + currentAbsBounds.x + ", y:" + currentAbsBounds.y + "}");
+
+        // 计算其父级的绝对 Y 坐标（实际上就是 元素的绝对Y - 相对Y）
+        var parentAbsY = currentAbsBounds.y - currentRelBounds.y;
+
+        // 我们要让它的新绝对 Y = 基准元素的绝对 Y
+        // 那么 新的相对 Y = 目标的绝对 Y - 它的父级绝对 Y
+        var newRelY = targetAbsBounds.y - parentAbsY;
+
         element.bounds = {
-            x: currentBounds.x,
-            y: targetY,
-            width: currentBounds.width,
-            height: currentBounds.height
+            x: currentRelBounds.x,
+            y: newRelY,
+            width: currentRelBounds.width,
+            height: currentRelBounds.height
         };
-        console.log("  -> 已对齐元素: [" + (element.name || "未命名") + "]");
+        console.log("  -> 新绝对Y应为: " + targetAbsBounds.y + ", 设置的新相对Y坐标: " + newRelY);
     }
 });
 
-console.log("--- 顶部对齐操作完成 ---");
+console.log("--- 智能顶部对齐操作完成 ---");
+
