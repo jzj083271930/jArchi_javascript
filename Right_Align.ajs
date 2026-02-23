@@ -1,0 +1,44 @@
+/**
+ * 右对齐 (Right Align)
+ * 选中多个元素，以最后一个选中的元素右边缘为基准进行对齐。和Archi原生的对齐不一样的地方是该方法可以跨元素对齐。
+ * add by Coony 2026-02-22
+ */
+
+// 显示并清空控制台
+console.show();
+console.clear();
+
+// 获取当前选中的所有图形元素 (排除关系连线等)
+var selectedElements = $(selection).filter("element");
+
+// 判断选中的元素数量是否至少为2个
+if (selectedElements.size() < 2) {
+    window.alert("请至少选择两个图元才能进行右对齐操作。");
+    exit();
+}
+
+// 遍历获取最后一个选中的元素作为基准
+var targetElement = null;
+selectedElements.each(function (e) {
+    targetElement = e;
+});
+var targetRightX = targetElement.bounds.x + targetElement.bounds.width;
+
+console.log("--- 开始右对齐操作 ---");
+console.log("基准元素: [" + (targetElement.name || "未命名") + "], 目标右边缘X坐标: " + targetRightX);
+
+// 遍历所有选中的元素，并更新它们的 X 坐标
+selectedElements.each(function (element) {
+    if (element.id !== targetElement.id) {
+        var currentBounds = element.bounds;
+        element.bounds = {
+            x: targetRightX - currentBounds.width,
+            y: currentBounds.y,
+            width: currentBounds.width,
+            height: currentBounds.height
+        };
+        console.log("  -> 已对齐元素: [" + (element.name || "未命名") + "]");
+    }
+});
+
+console.log("--- 右对齐操作完成 ---");
