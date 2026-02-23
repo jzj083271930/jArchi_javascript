@@ -17,28 +17,65 @@ if (selectedElements.size() < 2) {
     exit();
 }
 
+// 辅助函数：计算元素的绝对坐标
+function getAbsoluteBounds(element) {
+    var bounds = element.bounds;
+    var absX = bounds.x || 0;
+    var absY = bounds.y || 0;
+
+    var currentColl = $(element).parent();
+    while (currentColl && currentColl.size() > 0) {
+        var p = currentColl.first();
+        if (!p || p.type === "archimate-diagram-model" || p.type === "sketch-model") {
+            break;
+        }
+        if (p.bounds) {
+            absX += (p.bounds.x || 0);
+            absY += (p.bounds.y || 0);
+        }
+        currentColl = $(p).parent();
+    }
+    return { x: absX, y: absY };
+}
+
 // 遍历获取最后一个选中的元素作为基准
 var targetElement = null;
 selectedElements.each(function (e) {
     targetElement = e;
 });
-var targetBottom = targetElement.bounds.y + targetElement.bounds.height;
+var targetAbsBounds = getAbsoluteBounds(targetElement);
+var targetBottom = targetAbsBounds.y + targetElement.bounds.height;
 
-console.log("--- 开始底部对齐操作 ---");
-console.log("基准元素: [" + (targetElement.name || "未命名") + "], 目标Bottom坐标: " + targetBottom);
+console.log("--- 开始智能底部对齐操作 ---");
+console.log("基准元素: [" + (targetElement.name || "未命名") + "]");
+console.log("  -> 相对坐标: {y:" + targetElement.bounds.y + "}");
+console.log("  -> 绝对底部坐标: " + targetBottom);
 
 // 遍历所有选中的元素，并更新它们的 Y 坐标
 selectedElements.each(function (element) {
     if (element.id !== targetElement.id) {
-        var currentBounds = element.bounds;
+        var currentRelBounds = element.bounds;
+        var currentAbsBounds = getAbsoluteBounds(element);
+
+        console.log("待对齐元素: [" + (element.name || "未命名") + "]");
+
+        // 目标是让 element_abs_y + height = targetBottom
+        // element_abs_y = parent_abs_y + new_rel_y
+        // => parent_abs_y + new_rel_y + height = targetBottom
+        // => new_rel_y = targetBottom - height - parent_abs_y
+
+        var parentAbsY = currentAbsBounds.y - currentRelBounds.y;
+        var newRelY = targetBottom - currentRelBounds.height - parentAbsY;
+
         element.bounds = {
-            x: currentBounds.x,
-            y: targetBottom - currentBounds.height,
-            width: currentBounds.width,
-            height: currentBounds.height
+            x: currentRelBounds.x,
+            y: newRelY,
+            width: currentRelBounds.width,
+            height: currentRelBounds.height
         };
-        console.log("  -> 已对齐元素: [" + (element.name || "未命名") + "]");
+        console.log("  -> 新绝对底部应为: " + targetBottom + ", 设置的新相对Y坐标: " + newRelY);
     }
 });
 
-console.log("--- 底部对齐操作完成 ---");
+console.log("--- 智能底部对齐操作完成 ---");
+
