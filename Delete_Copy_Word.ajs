@@ -1,0 +1,45 @@
+/**
+ * 删除名字里的空格和“复制”二字
+ * 当在同一个视图中复制多个元素时，元素名称会有“ 复制”字样。使用该方法可以批量删除该字样。
+ * add by Coony 2026-02-22
+ */
+
+console.show();
+console.clear();
+console.log("开始执行重命名脚本...");
+
+// 获取当前选中的元素
+var targetElements = $(selection);
+
+// 如果当前没有选中任何对象，则尝试获取当前活动视图中的所有图元
+if (targetElements.size() === 0) {
+    if (window.activeView) {
+        // 获取当前视图中的所有元素(element)
+        targetElements = $(window.activeView).find("element");
+        console.log("未选中元素，将处理当前活动视图 [" + window.activeView.name + "] 中的所有元素。");
+    } else {
+        window.alert("请先打开一个视图或选中需要修改的元素。");
+        exit(); // 退出脚本
+    }
+} else {
+    console.log("将处理当前选中的元素。");
+}
+
+var changedCount = 0;
+
+targetElements.each(function (element) {
+    var oldName = element.name;
+    if (oldName) {
+        // 使用正则表达式移除所有类型的空格（\s+）、"复制"二字
+        var newName = oldName.replace(/\s+/g, "").replace(/复制/g, "");
+        // 只有在名称发生实际变化时才做修改，避免增加无用的撤销记录
+        if (oldName !== newName) {
+            element.name = newName;
+            console.log("变更: [" + oldName + "]  =>  [" + newName + "]");
+            changedCount++;
+        }
+    }
+});
+
+console.log("执行完毕，共修改了 " + changedCount + " 个元素的名称。");
+window.alert("执行完毕，共修改了 " + changedCount + " 个元素的名称。");
